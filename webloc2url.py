@@ -4,6 +4,7 @@ import glob
 import argparse
 # フォルダ内のすべての .webloc を変換
 
+EXT_WEBLOC = ".webloc"
 
 def make_file_list(args, search_from, file_exts):
     filelist = []
@@ -21,39 +22,39 @@ def make_file_list(args, search_from, file_exts):
 def create_filelist(args):
     files = {}
     base_dir = args.basedir
-    for ext in [".webloc"]:
-        if args.verbose:
-            print(f"Searching {ext} file(s)")
+    for ext in [EXT_WEBLOC]:
         files[ext] = make_file_list(args, base_dir, [ext])
     return files
 
 
 
-def convert_webloc_to_url(webloc_path, output_dir=None):
+def convert_webloc_to_url(args, webloc_path, output_dir=None):
     try:
-        with open(webloc_path, 'rb') as f:
-            data = plistlib.load(f)
-            url = data.get('URL')
+        if not args.dryrun:
+            with open(webloc_path, 'rb') as f:
+                data = plistlib.load(f)
+                url = data.get('URL')
 
-        if not url:
-            raise ValueError("URL not found in .webloc file")
+            if not url:
+                raise ValueError("URL not found in .webloc file")
 
-        filename = os.path.splitext(os.path.basename(webloc_path))[0] + '.url'
-        output_path = os.path.join(output_dir or os.path.dirname(webloc_path), filename)
+            filename = os.path.splitext(os.path.basename(webloc_path))[0] + '.url'
+            output_path = os.path.join(output_dir or os.path.dirname(webloc_path), filename)
 
-        with open(output_path, 'w', encoding='utf-8') as f:
-            f.write('[InternetShortcut]\n')
-            f.write(f'URL={url}\n')
+            with open(output_path, 'w', encoding='utf-8') as f:
+                f.write('[InternetShortcut]\n')
+                f.write(f'URL={url}\n')
 
         print(f'Converted: {webloc_path} → {output_path}')
     except:
-        print(f'Not Converted: "{webloc_path}"')
+        if args.verbose:
+            print(f'NOT Converted: "{webloc_path}"')
 
 
 def main(args):
     files = create_filelist(args)
-    for webloc_file in files:
-        convert_webloc_to_url(webloc_file)
+    for webloc_file in files[EXT_WEBLOC]:
+        convert_webloc_to_url(args, webloc_file)
 
 
 if __name__ == "__main__":
@@ -61,8 +62,8 @@ if __name__ == "__main__":
     parser.add_argument("--verbose", help="Verbose switch", action="store_true")
     parser.add_argument("--dryrun", help="dryrun switch", action="store_true")
     parser.add_argument("--rescan", help="Rescan files", action="store_true")
-    parser.add_argument("--cwd", help="variables")
     parser.add_argument("--basedir", type=str, default=os.getcwd())
     args = parser.parse_args()
-    print(args.basedir)
+    if args.verbose:
+        print(args.basedir)
     main(args)
